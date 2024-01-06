@@ -5,28 +5,38 @@ import android.view.View.GONE
 import android.view.View.VISIBLE
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.*
+import androidx.recyclerview.widget.RecyclerView
 import com.goodrequest.hiring.PokemonApi
+import com.goodrequest.hiring.R
 import com.goodrequest.hiring.databinding.ActivityBinding
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 class PokemonActivity: ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val vm by viewModel { PokemonViewModel(it, null, PokemonApi) }
+        val vm by viewModel { PokemonViewModel(it, PokemonApi) }
         vm.load()
 
         ActivityBinding.inflate(layoutInflater).run {
             setContentView(root)
-            refresh.setOnRefreshListener { vm.load() }
-            retry.setOnClickListener { vm.load() }
+            refresh.setOnRefreshListener { vm.refresh() }
+            retry.setOnClickListener {
+                loading.visibility = VISIBLE
+                failure.visibility = GONE
+                vm.load()
+            }
+            val adapter = PokemonAdapter()
+            items.adapter = adapter
 
-            vm.pokemons.observe(this@PokemonActivity) { result: Result<List<Pokemon>>? ->
+            vm.pokemons.observe(this@PokemonActivity) { result ->
                 result?.fold(
                     onSuccess = { pokemons ->
                         loading.visibility = GONE
-                        val adapter = PokemonAdapter()
-                        items.adapter = adapter
+                        refresh.isRefreshing = false
                         adapter.show(pokemons)
                     },
                     onFailure = {
@@ -35,9 +45,15 @@ class PokemonActivity: ComponentActivity() {
                     }
                 )
             }
+            vm.showRefreshError.observe(this@PokemonActivity) {
+                Snackbar.make(root, getString(R.string.snackbar_error_message), Snackbar.LENGTH_SHORT).show()
+            }
         }
     }
 }
+
+
+
 
 /**
  * Helper function that enables us to directly call constructor of our ViewModel but also

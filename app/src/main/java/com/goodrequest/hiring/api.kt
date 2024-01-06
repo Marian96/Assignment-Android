@@ -1,6 +1,8 @@
 package com.goodrequest.hiring
 
 import com.goodrequest.hiring.ui.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.logging.HttpLoggingInterceptor
@@ -9,15 +11,18 @@ import org.json.JSONObject
 import ru.gildor.coroutines.okhttp.await
 
 object PokemonApi {
-    suspend fun getPokemons(page: Int): Result<List<Pokemon>> =
+    suspend fun getPokemons(page: Int): Result<List<Pokemon>> = withContext(Dispatchers.IO) {
         client.httpGet(
             url   = "https://pokeapi.co/api/v2/pokemon/?limit=20&offset=${(page - 1) * 20}".toHttpUrl(),
             parse = ::parsePokemons)
+    }
 
-    suspend fun getPokemonDetail(pokemon: Pokemon): Result<PokemonDetail> =
+    suspend fun getPokemonDetail(pokemon: Pokemon): Result<PokemonDetail> = withContext(Dispatchers.IO) {
         client.httpGet(
-            url   = pokemon.id.toHttpUrl(),
-            parse = ::parsePokemonDetail)
+            url = pokemon.id.toHttpUrl(),
+            parse = ::parsePokemonDetail
+        )
+    }
 }
 
 
