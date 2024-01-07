@@ -6,6 +6,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goodrequest.hiring.PokemonApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import java.io.Serializable
 
@@ -27,7 +29,7 @@ class PokemonViewModel(
 
     fun load() {
         viewModelScope.launch {
-            state[SAVED_STATE_POKEMONS] = api.getPokemons(page = 1)
+            state[SAVED_STATE_POKEMONS] = getPokemonsWithDetails(page = 1)
         }
     }
 
@@ -46,6 +48,25 @@ class PokemonViewModel(
                 }
             )
         }
+    }
+
+    private suspend fun getPokemonsWithDetails(page: Int): Result<List<Pokemon>> {
+        val result = api.getPokemons(page = page)
+        result.fold(
+            onSuccess = { pokemons ->
+                val updatedPokemons = pokemons.map { pokemon ->
+                    viewModelScope.async { pokemon to api.getPokemonDetail(pokemon) }
+                }.awaitAll().map {
+                    val (pokemon, pokemonDetail) = it
+                   pokemon.copy(detail = pokemonDetail.getOrNull())
+                }
+
+                return Result.success(updatedPokemons)
+            },
+            onFailure = {
+                return Result.failure(it)
+            }
+        )
     }
 
     companion object {

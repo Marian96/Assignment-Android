@@ -31,10 +31,14 @@ class Item(view: View): RecyclerView.ViewHolder(view) {
     private val ui = ItemBinding.bind(view)
 
     fun show(pokemon: Pokemon) {
-        ui.image.load(pokemon.detail?.image) {
-            crossfade(true)
-            placeholder(R.drawable.ic_launcher_foreground)
-        }
         ui.name.text = pokemon.name
+        pokemon.detail?.let { detail ->
+            ui.image.load(detail.image) {
+                crossfade(true)
+                placeholder(R.drawable.ic_launcher_foreground)
+            }
+            ui.move.text = detail.move
+            ui.weight.text = detail.weight.toString()
+        } ?: ui.image.setImageResource(R.drawable.ic_launcher_foreground)
     }
 }
