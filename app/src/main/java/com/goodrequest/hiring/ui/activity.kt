@@ -19,7 +19,6 @@ class PokemonActivity: ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val vm by viewModel { PokemonViewModel(it, PokemonApi) }
-        vm.load()
 
         ActivityBinding.inflate(layoutInflater).run {
             setContentView(root)
@@ -27,10 +26,19 @@ class PokemonActivity: ComponentActivity() {
             retry.setOnClickListener {
                 loading.visibility = VISIBLE
                 failure.visibility = GONE
-                vm.load()
+                vm.load(loadNextPage = false)
             }
             val adapter = PokemonAdapter()
             items.adapter = adapter
+            items.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    super.onScrolled(recyclerView, dx, dy)
+
+                    if (!recyclerView.canScrollVertically(1)) {
+                        vm.load(loadNextPage = true)
+                    }
+                }
+            })
 
             vm.pokemons.observe(this@PokemonActivity) { result ->
                 result?.fold(
@@ -46,8 +54,14 @@ class PokemonActivity: ComponentActivity() {
                 )
             }
             vm.showRefreshError.observe(this@PokemonActivity) {
+                refresh.isRefreshing = false
                 Snackbar.make(root, getString(R.string.snackbar_error_message), Snackbar.LENGTH_SHORT).show()
             }
+            adapter.onRetryButtonClick
+                .onEach {
+                    vm.load(loadNextPage = false)
+                }
+                .launchIn(lifecycleScope)
         }
     }
 }
